@@ -13,6 +13,14 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "bcoin": "git+https://github.com/bcoin-org/bcoin.git"
+    "bcoin": "git+https://github.com/bcoin-org/bcoin.git",
+    "bdb": "^1.1.7",
+    "blgr": "^0.1.7",
+    "blru": "^0.1.6",
+    "bsert": "0.0.10",
+    "buffer-map": "0.0.7"
+  },
+  "devDependencies": {
+    "bmocha": "^2.1.2"
   }
 }
