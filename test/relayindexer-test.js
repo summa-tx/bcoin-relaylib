@@ -10,6 +10,7 @@ const BlockStore = require('bcoin/lib/blockstore/level');
 const Chain = require('bcoin/lib/blockchain/chain');
 const WorkerPool = require('bcoin/lib/workers/workerpool');
 const {ScriptRecord, OutpointRecord} = require('../lib/records');
+const Request = require('../lib/request');
 const logger = require('blgr');
 const assert = require('bsert');
 const random = require('bcrypto/lib/random');
@@ -21,16 +22,19 @@ describe('RelayIndexer', function () {
   before(async () => {
     const network = Network.get('regtest');
 
+    // flat file block storage
     blocks = new BlockStore({
       memory: true,
       network
     });
 
+    // multiprocessing
     workers = new WorkerPool({
       enabled: true,
       size: 2
     });
 
+    // chain object
     chain = new Chain({
       memory: true,
       network,
@@ -38,6 +42,7 @@ describe('RelayIndexer', function () {
       blocks
     });
 
+    // indexer object
     indexer = new RelayIndexer({
       blocks: blocks,
       chain: chain,
@@ -151,7 +156,7 @@ describe('RelayIndexer', function () {
     assert(!await indexer.hasOutpoint(record));
   });
 
-  it('should get all outpoints', async () => {
+  it('should get/delete all outpoints', async () => {
     // big endian txids from blocksteam.info
     const json = [
       ['0eb660e3573e66b4db21d3a5e310ecdfe0ad34eb8f395daf915b8e51de1b213f', 1],
@@ -181,11 +186,91 @@ describe('RelayIndexer', function () {
     for (const [i, outpoint] of outpoints.entries()) {
       const {prevout: {hash, index}} = outpoint.toJSON();
       assert.deepEqual(json[i], [hash, index]);
+
+      await indexer.deleteOutpoint(outpoint);
+      assert(!await indexer.hasOutpoint(outpoint));
     }
   });
 
-  // TODO
-  it('should index request records', async () => {
-    this.skip();
+  it('should index requests', async () => {
+    const scriptPubKey = b('76a914698fa40f815c7f8e899cf94bf85c48c1993023ce88ac');
+
+    const request = Request.fromOptions({
+      address: Buffer.allocUnsafe(20),
+      amount: 2000,
+      spends: {
+        index: 0,
+        hash: Buffer.allocUnsafe(32)
+      },
+      pays: scriptPubKey
+    });
+
+    assert(!await indexer.hasRequest(0));
+    await indexer.putRequest(request);
+
+    assert(await indexer.hasRequest(0));
+
+    // indexer manages the id
+    request.id = 0;
+
+    const r = await indexer.getRequest(0);
+
+    assert.deepEqual(request, r);
+
+    await indexer.deleteRequest(0);
+  });
+
+  it('should get/delete all requests', async () => {
+
+    const hexes = [
+      b('0014eb945cf9f30663539fd85af8fafcbc656b1c352b'),
+      b('76a9144c8c7ba9495a1b079003188f0ec4e172be23641088ac'),
+      b('a9144687822239e9b03cfb0875a708bbd52f2c64cedd87'),
+      b('76a914698fa40f815c7f8e899cf94bf85c48c1993023ce88ac')
+    ];
+
+    const requests = [];
+
+    for (const [i, scriptPubKey] of Object.entries(hexes)) {
+      // create requests from random data and
+      // hold on to them to compare against
+      // data returned from the database
+      const request = Request.fromOptions({
+        address: random.randomBytes(20),
+        value: random.randomRange(1e3, 1e7),
+        spends: {
+          index: random.randomRange(0, 3),
+          hash: random.randomBytes(32)
+        },
+        pays: scriptPubKey
+      });
+
+      requests.push(request);
+
+      const r1 = await indexer.putRequest(request);
+
+      assert(await indexer.hasRequest(r1.id));
+
+      const r2 = await indexer.getRequest(r1.id);
+
+      assert.deepEqual(r1, r2)
+    }
+
+    const rs = await indexer.getRequests();
+
+    assert.equal(requests.length, rs.length);
+
+    for (const request of requests) {
+      const r1 = rs.find(r => r.id === request.id);
+      assert.deepEqual(request, r1);
+
+      await indexer.deleteRequest(r1.id);
+      assert(!await indexer.hasRequest(r1.id));
+    }
   });
 });
+
+// python like buffer constructor
+function b(hex) {
+  return Buffer.from(hex, 'hex');
+}
