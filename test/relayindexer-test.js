@@ -11,13 +11,15 @@ const Chain = require('bcoin/lib/blockchain/chain');
 const WorkerPool = require('bcoin/lib/workers/workerpool');
 const {ScriptRecord, OutpointRecord} = require('../lib/records');
 const Request = require('../lib/request');
-const logger = require('blgr');
+const Logger = require('blgr');
 const assert = require('bsert');
 const random = require('bcrypto/lib/random');
 
 // TODO: afterEach step for clearing db
 describe('RelayIndexer', function () {
   let indexer, workers, chain, blocks;
+
+  const logger = new Logger('debug');
 
   before(async () => {
     const network = Network.get('regtest');
@@ -44,11 +46,14 @@ describe('RelayIndexer', function () {
 
     // indexer object
     indexer = new RelayIndexer({
+      logger: logger,
       blocks: blocks,
       chain: chain,
-      memory: true
+      memory: true,
+      has: () => {}
     });
 
+    await logger.open();
     await blocks.open();
     await chain.open();
     await indexer.open();
@@ -205,19 +210,21 @@ describe('RelayIndexer', function () {
       pays: scriptPubKey
     });
 
-    assert(!await indexer.hasRequest(0));
+    // TODO: should start with 0 for first one indexed
+
+    assert(!await indexer.hasRequest(1));
     await indexer.putRequest(request);
 
-    assert(await indexer.hasRequest(0));
+    assert(await indexer.hasRequest(1));
 
     // indexer manages the id
-    request.id = 0;
+    request.id = 1;
 
-    const r = await indexer.getRequest(0);
+    const r = await indexer.getRequest(1);
 
     assert.deepEqual(request, r);
 
-    await indexer.deleteRequest(0);
+    await indexer.deleteRequest(1);
   });
 
   it('should get/delete all requests', async () => {
@@ -267,6 +274,36 @@ describe('RelayIndexer', function () {
       await indexer.deleteRequest(r1.id);
       assert(!await indexer.hasRequest(r1.id));
     }
+  });
+
+  it('should add Request', async () => {
+    const pays = b('0014eb945cf9f30663539fd85af8fafcbc656b1c352b');
+    const address = random.randomBytes(20);
+    const value = random.randomRange(1e3, 1e7);
+    const index = random.randomRange(0, 3);
+    const hash = random.randomBytes(32);
+
+    const request = Request.fromOptions({
+      address: address,
+      value: value,
+      spends: {
+        index: index,
+        hash: hash
+      },
+      pays: pays
+    });
+
+    const [r, o, s]  = await indexer.addRequest(request);
+
+    const orecord = await indexer.getOutpoint(hash, index);
+
+    // fix this api
+    const srecord = await indexer.getScript({script: pays});
+
+    assert.deepEqual(request, r);
+
+    assert.deepEqual(o, orecord);
+    assert.deepEqual(s, srecord);
   });
 });
 
