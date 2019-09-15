@@ -13,7 +13,9 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "bclient": "^0.1.7",
     "bcoin": "git+https://github.com/bcoin-org/bcoin.git",
+    "bcrypto": "https://github.com/bcoin-org/bcrypto.git",
     "bdb": "^1.1.7",
     "blgr": "^0.1.7",
     "blru": "^0.1.6",
