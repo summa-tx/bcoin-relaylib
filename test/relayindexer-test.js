@@ -5,7 +5,7 @@
 'use strict';
 
 const RelayIndexer = require('../lib/indexer');
-const {Outpoint, Network} = require('bcoin');
+const {Network} = require('bcoin');
 const BlockStore = require('bcoin/lib/blockstore/level');
 const Chain = require('bcoin/lib/blockchain/chain');
 const WorkerPool = require('bcoin/lib/workers/workerpool');
@@ -168,7 +168,7 @@ describe('RelayIndexer', function () {
       ['0eb660e3573e66b4db21d3a5e310ecdfe0ad34eb8f395daf915b8e51de1b213f', 1],
       ['2888fb96f2a1518d4f4c4205d71765d2b76c8305e200c17e23e59e3e5f69cc4e', 1],
       ['4870d78bfdc31b6b6d3f046c66c0e036762d2938574ce41a135be8a2985e0629', 0],
-      ['e1dcfa55c8c43859fb6c261589f93db5156778a1e1faa8d476214b3e21b3556a', 2],
+      ['e1dcfa55c8c43859fb6c261589f93db5156778a1e1faa8d476214b3e21b3556a', 2]
     ];
 
     for (const [txid, index] of json) {
@@ -229,7 +229,6 @@ describe('RelayIndexer', function () {
   });
 
   it('should get/delete all requests', async () => {
-
     const hexes = [
       b('0014eb945cf9f30663539fd85af8fafcbc656b1c352b'),
       b('76a9144c8c7ba9495a1b079003188f0ec4e172be23641088ac'),
@@ -239,7 +238,7 @@ describe('RelayIndexer', function () {
 
     const requests = [];
 
-    for (const [i, scriptPubKey] of Object.entries(hexes)) {
+    for (const scriptPubKey of hexes) {
       // create requests from random data and
       // hold on to them to compare against
       // data returned from the database
@@ -261,7 +260,7 @@ describe('RelayIndexer', function () {
 
       const r2 = await indexer.getRequest(r1.id);
 
-      assert.deepEqual(r1, r2)
+      assert.deepEqual(r1, r2);
     }
 
     const rs = await indexer.getRequests();

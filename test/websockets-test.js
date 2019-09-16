@@ -12,8 +12,6 @@ const assert = require('bsert');
 const {NodeClient, WalletClient} = require('bclient');
 const Logger = require('blgr');
 
-const {Network, Address, Script} = require('bcoin');
-const network = Network.get('regtest');
 const logger = new Logger();
 
 const ports = {
@@ -107,7 +105,7 @@ describe('HTTP and Websockets', function() {
 
     const json = await rclient.putRequestRecord({
       address: address,
-      value: 1 * consensus.COIN,
+      value: consensus.COIN,
       spends: {
         index: index,
         hash: hash
@@ -156,8 +154,3 @@ describe('HTTP and Websockets', function() {
     assert(event);
   });
 });
-
-// hacky, use events instead
-async function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
