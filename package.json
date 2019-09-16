@@ -20,7 +20,8 @@
     "blgr": "^0.1.7",
     "blru": "^0.1.6",
     "bsert": "0.0.10",
-    "buffer-map": "0.0.7"
+    "buffer-map": "0.0.7",
+    "bweb": "^0.1.9"
   },
   "devDependencies": {
     "bmocha": "^2.1.2"
