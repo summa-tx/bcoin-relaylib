@@ -7,6 +7,9 @@
   "contributors": [
     "James Prestwich <james@summa.one>"
   ],
+  "engines": {
+    "node": ">=10.0.0"
+  },
   "scripts": {
     "test": "bmocha test/*",
     "lint": "eslint $(cat .eslintfiles)"
@@ -16,6 +19,9 @@
     "bitcoin",
     "relay"
   ],
+  "bin": {
+    "node": "./bin/node"
+  },
   "license": "Apache-2.0",
   "dependencies": {
     "bclient": "^0.1.7",
