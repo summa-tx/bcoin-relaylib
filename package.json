@@ -1,24 +1,38 @@
 {
   "name": "bcoin-relaylib",
-  "version": "1.0.0",
-  "description": "",
+  "version": "0.0.1",
+  "description": "Relay plugin for bcoin",
   "main": "lib/index.js",
-  "directories": {
-    "lib": "lib"
+  "author": "Mark Tyneway <mark.tyneway@gmail.com>",
+  "contributors": [
+    "James Prestwich <james@summa.one>"
+  ],
+  "engines": {
+    "node": ">=10.0.0"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "bmocha test/*",
+    "lint": "eslint $(cat .eslintfiles)"
   },
-  "keywords": [],
-  "author": "",
-  "license": "MIT",
+  "keywords": [
+    "bcoin",
+    "bitcoin",
+    "relay"
+  ],
+  "bin": {
+    "node": "./bin/node"
+  },
+  "license": "Apache-2.0",
   "dependencies": {
+    "bclient": "^0.1.7",
     "bcoin": "git+https://github.com/bcoin-org/bcoin.git",
+    "bcrypto": "https://github.com/bcoin-org/bcrypto.git",
     "bdb": "^1.1.7",
     "blgr": "^0.1.7",
     "blru": "^0.1.6",
     "bsert": "0.0.10",
-    "buffer-map": "0.0.7"
+    "buffer-map": "0.0.7",
+    "bweb": "^0.1.9"
   },
   "devDependencies": {
     "bmocha": "^2.1.2"

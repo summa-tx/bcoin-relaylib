@@ -5,19 +5,21 @@
 'use strict';
 
 const RelayIndexer = require('../lib/indexer');
-const {Outpoint, Network} = require('bcoin');
+const {Network} = require('bcoin');
 const BlockStore = require('bcoin/lib/blockstore/level');
 const Chain = require('bcoin/lib/blockchain/chain');
 const WorkerPool = require('bcoin/lib/workers/workerpool');
 const {ScriptRecord, OutpointRecord} = require('../lib/records');
 const Request = require('../lib/request');
-const logger = require('blgr');
+const Logger = require('blgr');
 const assert = require('bsert');
 const random = require('bcrypto/lib/random');
 
 // TODO: afterEach step for clearing db
 describe('RelayIndexer', function () {
   let indexer, workers, chain, blocks;
+
+  const logger = new Logger();
 
   before(async () => {
     const network = Network.get('regtest');
@@ -44,11 +46,14 @@ describe('RelayIndexer', function () {
 
     // indexer object
     indexer = new RelayIndexer({
+      logger: logger,
       blocks: blocks,
       chain: chain,
-      memory: true
+      memory: true,
+      has: () => {}
     });
 
+    await logger.open();
     await blocks.open();
     await chain.open();
     await indexer.open();
@@ -70,16 +75,16 @@ describe('RelayIndexer', function () {
       requests: [1, 2, 3]
     });
 
-    assert(!await indexer.hasScript(record));
+    assert(!await indexer.hasScriptRecord(record));
 
-    await indexer.putScript(record);
+    await indexer.putScriptRecord(record);
 
-    assert(await indexer.hasScript(record));
+    assert(await indexer.hasScriptRecord(record));
 
     // clear db for next test
-    await indexer.deleteScript(record);
+    await indexer.deleteScriptRecord(record);
 
-    assert(!await indexer.hasScript(record));
+    assert(!await indexer.hasScriptRecord(record));
   });
 
   it('should reserialize a script record after db read/write', async () => {
@@ -90,16 +95,17 @@ describe('RelayIndexer', function () {
       requests: [7, 11, 666]
     });
 
-    await indexer.putScript(record);
+    await indexer.putScriptRecord(record);
 
-    const script = await indexer.getScript(record);
+    const script = await indexer.getScriptRecord(hex);
 
     assert.deepEqual(record.toJSON(), script.toJSON());
 
-    await indexer.deleteScript(record);
+    await indexer.deleteScriptRecord(record);
   });
 
   it('should batch write and get all scripts', async () => {
+    // start a database transaction
     indexer.start();
 
     const hexes = [
@@ -115,12 +121,12 @@ describe('RelayIndexer', function () {
         requests: [random.randomRange(0, 2e8)]
       });
 
-      await indexer.putScript(record);
+      await indexer.putScriptRecord(record);
     }
 
     await indexer.commit();
 
-    const records = await indexer.getScripts();
+    const records = await indexer.getScriptRecords();
 
     // same number of scripts
     assert.equal(hexes.length, records.length);
@@ -132,7 +138,7 @@ describe('RelayIndexer', function () {
       assert(hexes.includes(hex));
 
       // clear db
-      await indexer.deleteScript(record);
+      await indexer.deleteScriptRecord(record);
     }
   });
 
@@ -147,13 +153,13 @@ describe('RelayIndexer', function () {
       requests: [10]
     });
 
-    assert(!await indexer.hasOutpoint(record));
+    assert(!await indexer.hasOutpointRecord(record));
 
-    await indexer.putOutpoint(record);
-    assert(await indexer.hasOutpoint(record));
+    await indexer.putOutpointRecord(record);
+    assert(await indexer.hasOutpointRecord(record));
 
-    await indexer.deleteOutpoint(record);
-    assert(!await indexer.hasOutpoint(record));
+    await indexer.deleteOutpointRecord(record);
+    assert(!await indexer.hasOutpointRecord(record));
   });
 
   it('should get/delete all outpoints', async () => {
@@ -162,7 +168,7 @@ describe('RelayIndexer', function () {
       ['0eb660e3573e66b4db21d3a5e310ecdfe0ad34eb8f395daf915b8e51de1b213f', 1],
       ['2888fb96f2a1518d4f4c4205d71765d2b76c8305e200c17e23e59e3e5f69cc4e', 1],
       ['4870d78bfdc31b6b6d3f046c66c0e036762d2938574ce41a135be8a2985e0629', 0],
-      ['e1dcfa55c8c43859fb6c261589f93db5156778a1e1faa8d476214b3e21b3556a', 2],
+      ['e1dcfa55c8c43859fb6c261589f93db5156778a1e1faa8d476214b3e21b3556a', 2]
     ];
 
     for (const [txid, index] of json) {
@@ -174,10 +180,10 @@ describe('RelayIndexer', function () {
         requests: [10]
       });
 
-      await indexer.putOutpoint(record);
+      await indexer.putOutpointRecord(record);
     }
 
-    const outpoints = await indexer.getOutpoints();
+    const outpoints = await indexer.getOutpointRecords();
 
     assert(json.length, outpoints.length);
 
@@ -187,8 +193,8 @@ describe('RelayIndexer', function () {
       const {prevout: {hash, index}} = outpoint.toJSON();
       assert.deepEqual(json[i], [hash, index]);
 
-      await indexer.deleteOutpoint(outpoint);
-      assert(!await indexer.hasOutpoint(outpoint));
+      await indexer.deleteOutpointRecord(outpoint);
+      assert(!await indexer.hasOutpointRecord(outpoint));
     }
   });
 
@@ -205,23 +211,24 @@ describe('RelayIndexer', function () {
       pays: scriptPubKey
     });
 
-    assert(!await indexer.hasRequest(0));
+    // TODO: should start with 0 for first one indexed
+
+    assert(!await indexer.hasRequest(1));
     await indexer.putRequest(request);
 
-    assert(await indexer.hasRequest(0));
+    assert(await indexer.hasRequest(1));
 
     // indexer manages the id
-    request.id = 0;
+    request.id = 1;
 
-    const r = await indexer.getRequest(0);
+    const r = await indexer.getRequest(1);
 
     assert.deepEqual(request, r);
 
-    await indexer.deleteRequest(0);
+    await indexer.deleteRequest(1);
   });
 
   it('should get/delete all requests', async () => {
-
     const hexes = [
       b('0014eb945cf9f30663539fd85af8fafcbc656b1c352b'),
       b('76a9144c8c7ba9495a1b079003188f0ec4e172be23641088ac'),
@@ -231,7 +238,7 @@ describe('RelayIndexer', function () {
 
     const requests = [];
 
-    for (const [i, scriptPubKey] of Object.entries(hexes)) {
+    for (const scriptPubKey of hexes) {
       // create requests from random data and
       // hold on to them to compare against
       // data returned from the database
@@ -253,7 +260,7 @@ describe('RelayIndexer', function () {
 
       const r2 = await indexer.getRequest(r1.id);
 
-      assert.deepEqual(r1, r2)
+      assert.deepEqual(r1, r2);
     }
 
     const rs = await indexer.getRequests();
@@ -267,6 +274,36 @@ describe('RelayIndexer', function () {
       await indexer.deleteRequest(r1.id);
       assert(!await indexer.hasRequest(r1.id));
     }
+  });
+
+  it('should add Request', async () => {
+    const pays = b('0014eb945cf9f30663539fd85af8fafcbc656b1c352b');
+    const address = random.randomBytes(20);
+    const value = random.randomRange(1e3, 1e7);
+    const index = random.randomRange(0, 3);
+    const hash = random.randomBytes(32);
+
+    const request = Request.fromOptions({
+      address: address,
+      value: value,
+      spends: {
+        index: index,
+        hash: hash
+      },
+      pays: pays
+    });
+
+    const [r, o, s]  = await indexer.addRequest(request);
+
+    const orecord = await indexer.getOutpointRecord(hash, index);
+
+    // fix this api
+    const srecord = await indexer.getScriptRecord(pays);
+
+    assert.deepEqual(request, r);
+
+    assert.deepEqual(o, orecord);
+    assert.deepEqual(s, srecord);
   });
 });
 
