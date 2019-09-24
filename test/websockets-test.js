@@ -153,4 +153,32 @@ describe('HTTP and Websockets', function() {
 
     assert(event);
   });
+
+  it('should return the latest id from GET /', async () => {
+    const info = await rclient.getRelayInfo();
+    assert('latestId' in info);
+
+    const n = 10;
+    // create a bunch of Requests
+    // send n and assert that info.latestId + n === new response
+    for (let i = 0; i < n; i++) {
+      const address = random.randomBytes(20).toString('hex');
+      const hash = random.randomBytes(32).toString('hex');
+      const index = random.randomRange(0, 4);
+
+      await rclient.putRequestRecord({
+        address: address,
+        value: consensus.COIN,
+        spends: {
+          index: index,
+          hash: hash
+        },
+        pays: pays
+      });
+    }
+
+    const post = await rclient.getRelayInfo();
+
+    assert.deepEqual(info.latestId + n, post.latestId);
+  });
 });
