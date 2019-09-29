@@ -104,6 +104,7 @@ describe('HTTP and Websockets', function() {
     const index = 0;
 
     const json = await rclient.putRequestRecord({
+      id: 0,
       address: address,
       value: consensus.COIN,
       spends: {
@@ -160,13 +161,15 @@ describe('HTTP and Websockets', function() {
 
     const n = 10;
     // create a bunch of Requests
-    // send n and assert that info.latestId + n === new response
+    // send n and assert that (info.latestId + n) - 1 === new response
+    // subtract 1 because it is 0 indexed
     for (let i = 0; i < n; i++) {
       const address = random.randomBytes(20).toString('hex');
       const hash = random.randomBytes(32).toString('hex');
       const index = random.randomRange(0, 4);
 
       await rclient.putRequestRecord({
+        id: i,
         address: address,
         value: consensus.COIN,
         spends: {
@@ -177,8 +180,9 @@ describe('HTTP and Websockets', function() {
       });
     }
 
+    // will always return the largest id
     const post = await rclient.getRelayInfo();
 
-    assert.deepEqual(info.latestId + n, post.latestId);
+    assert.deepEqual(info.latestId + n - 1, post.latestId);
   });
 });
