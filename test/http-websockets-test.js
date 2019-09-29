@@ -141,7 +141,7 @@ describe('HTTP and Websockets', function() {
       spends: {
         index: 2,
         hash: random.randomBytes(32).toString('hex')
-      },
+      }
     });
 
     assert(json.request);
@@ -201,7 +201,7 @@ describe('HTTP and Websockets', function() {
     // increment the id each time, assert that the
     // incremented id is returned
     for (let i = 0; i < n; i++) {
-      let info = await rclient.getRelayInfo();
+      const info = await rclient.getRelayInfo();
       assert('latestId' in info);
 
       const address = random.randomBytes(20).toString('hex');
