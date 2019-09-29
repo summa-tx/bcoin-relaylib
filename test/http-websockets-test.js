@@ -11,6 +11,7 @@ const random = require('bcrypto/lib/random');
 const assert = require('bsert');
 const {NodeClient, WalletClient} = require('bclient');
 const Logger = require('blgr');
+const {Script} = require('bcoin');
 
 const logger = new Logger();
 
@@ -174,12 +175,20 @@ describe('HTTP and Websockets', function() {
 
   it('should receive a websocket event on spend to "pays"', async () => {
     let event = false;
+    let tx;
 
-    rclient.bind('relay output created', () => {
+    rclient.bind('relay requests satisfied', (data) => {
       event = true;
+      assert.equal(tx.hash, data.hash);
+
+      const output = tx.outputs[data.index];
+      assert(output);
+
+      const script = Script.fromAddress(output.address);
+      assert.equal(pays, script.toRaw().toString('hex'));
     });
 
-    const tx = await wallet.send({
+    tx = await wallet.send({
       account: 'default',
       outputs: [
         {value: 0.1 * consensus.COIN, script: pays}
