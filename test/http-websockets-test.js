@@ -133,6 +133,45 @@ describe('HTTP and Websockets', function() {
     assert.deepEqual(json.script, script);
   });
 
+  it('should index Request with only spends', async () => {
+    const json = await rclient.putRequestRecord({
+      id: 5,
+      address: random.randomBytes(20).toString('hex'),
+      value: consensus.COIN,
+      spends: {
+        index: 2,
+        hash: random.randomBytes(32).toString('hex')
+      },
+    });
+
+    assert(json.request);
+    assert(json.outpoint);
+    assert(!json.script);
+  });
+
+  it('should index Request with only Pays', async () => {
+    const json = await rclient.putRequestRecord({
+      id: 5,
+      address: random.randomBytes(20).toString('hex'),
+      value: consensus.COIN,
+      pays: pays
+    });
+
+    assert(json.request);
+    assert(json.script);
+    assert(!json.outpoint);
+  });
+
+  it('should throw error when no Pays and no Spends', async () => {
+    const fn = async () => await rclient.putRequestRecord({
+      id: 8,
+      address: random.randomBytes(20).toString('hex'),
+      value: consensus.COIN
+    });
+
+    assert.rejects(fn, 'Status code: 400');
+  });
+
   it('should receive a websocket event on spend to "pays"', async () => {
     let event = false;
 
@@ -156,20 +195,21 @@ describe('HTTP and Websockets', function() {
   });
 
   it('should return the latest id from GET /', async () => {
-    const info = await rclient.getRelayInfo();
-    assert('latestId' in info);
-
     const n = 10;
-    // create a bunch of Requests
-    // send n and assert that (info.latestId + n) - 1 === new response
-    // subtract 1 because it is 0 indexed
+
+    // create a bunch of Requests and index them
+    // increment the id each time, assert that the
+    // incremented id is returned
     for (let i = 0; i < n; i++) {
+      let info = await rclient.getRelayInfo();
+      assert('latestId' in info);
+
       const address = random.randomBytes(20).toString('hex');
       const hash = random.randomBytes(32).toString('hex');
       const index = random.randomRange(0, 4);
 
       await rclient.putRequestRecord({
-        id: i,
+        id: info.latestId + 1,
         address: address,
         value: consensus.COIN,
         spends: {
@@ -178,11 +218,10 @@ describe('HTTP and Websockets', function() {
         },
         pays: pays
       });
+
+      const post = await rclient.getRelayInfo();
+
+      assert.deepEqual(post.latestId, info.latestId + 1);
     }
-
-    // will always return the largest id
-    const post = await rclient.getRelayInfo();
-
-    assert.deepEqual(info.latestId + n - 1, post.latestId);
   });
 });
