@@ -9,7 +9,7 @@ const consensus = require('bcoin/lib/protocol/consensus');
 const RelayClient = require('../lib/client');
 const random = require('bcrypto/lib/random');
 const assert = require('bsert');
-const {NodeClient, WalletClient} = require('bclient');
+const {NodeClient, WalletClient} = require('bcoin/lib/client');
 const Logger = require('blgr');
 const {Script} = require('bcoin');
 
@@ -177,7 +177,7 @@ describe('HTTP and Websockets', function() {
     let event = false;
     let tx;
 
-    rclient.bind('relay requests satisfied', (data) => {
+    function callback(data) {
       event = true;
       assert.equal(tx.hash, data.hash);
 
@@ -186,7 +186,9 @@ describe('HTTP and Websockets', function() {
 
       const script = Script.fromAddress(output.address);
       assert.equal(pays, script.toRaw().toString('hex'));
-    });
+    }
+
+    rclient.bind('relay requests satisfied', callback);
 
     tx = await wallet.send({
       account: 'default',
@@ -201,6 +203,11 @@ describe('HTTP and Websockets', function() {
     await nclient.execute('generatetoaddress', [1, coinbase]);
 
     assert(event);
+
+    // TODO: stuck on old version of bclient
+    // without unbind method, so call it directly
+    // on the client's socket
+    rclient.socket.unbind('relay requests satisfied', callback);
   });
 
   it('should return the latest id from GET /', async () => {
@@ -211,14 +218,15 @@ describe('HTTP and Websockets', function() {
     // incremented id is returned
     for (let i = 0; i < n; i++) {
       const info = await rclient.getRelayInfo();
-      assert('latestId' in info);
+      assert('latest' in info);
+      assert(typeof info.latest.id === 'number');
 
       const address = random.randomBytes(20).toString('hex');
       const hash = random.randomBytes(32).toString('hex');
       const index = random.randomRange(0, 4);
 
       await rclient.putRequestRecord({
-        id: info.latestId + 1,
+        id: info.latest.id + 1,
         address: address,
         value: consensus.COIN,
         spends: {
@@ -230,7 +238,56 @@ describe('HTTP and Websockets', function() {
 
       const post = await rclient.getRelayInfo();
 
-      assert.deepEqual(post.latestId, info.latestId + 1);
+      assert.deepEqual(post.latest.id, info.latest.id + 1);
     }
+  });
+
+  it('should receive a websocket event on spend of "spends"', async () => {
+    const pays = '00144aed182abf4817c8383979b61a25e3eaea2187c0';
+    let event = false;
+    let hash, index;
+
+    function callback(data) {
+      event = true;
+      assert.equal(hash, data.hash.reverse().toString('hex'));
+      assert.equal(index, data.index);
+    }
+
+    // set up listener
+    rclient.bind('relay requests satisfied', callback);
+
+    // create transaction
+    const tx = await wallet.createTX({
+      account: 'default',
+      outputs: [
+        {value: 0.1 * consensus.COIN, script: pays}
+      ]
+    });
+
+    // create Request
+    const info = await rclient.getRelayInfo();
+    const address = random.randomBytes(20).toString('hex');
+    hash = tx.inputs[0].prevout.hash;
+    index = tx.inputs[0].prevout.index;
+
+    await rclient.putRequestRecord({
+      id: info.latest.id + 1,
+      address: address,
+      value: consensus.COIN,
+      spends: {
+        index: index,
+        hash: hash
+      }
+    });
+
+    const hex = tx.hex;
+    await nclient.execute('sendrawtransaction', [hex]);
+
+    // mine a block to get it in the chain
+    await nclient.execute('generatetoaddress', [1, coinbase]);
+
+    assert(event);
+
+    rclient.socket.unbind('relay requests satisfied', callback);
   });
 });
