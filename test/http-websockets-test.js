@@ -124,7 +124,7 @@ describe('HTTP and Websockets', function() {
 
     const id = json.request.id;
 
-    const request = await rclient.getRequestRecord(id);
+    const request = await rclient.getRequest(id);
     assert.deepEqual(json.request, request);
 
     const outpoint = await rclient.getOutpointRecord(hash, index);
