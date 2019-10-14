@@ -165,9 +165,9 @@ describe('RelayIndexer', function () {
   it('should get/delete all outpoints', async () => {
     // big endian txids from blocksteam.info
     const json = [
+      ['4870d78bfdc31b6b6d3f046c66c0e036762d2938574ce41a135be8a2985e0629', 0],
       ['0eb660e3573e66b4db21d3a5e310ecdfe0ad34eb8f395daf915b8e51de1b213f', 1],
       ['2888fb96f2a1518d4f4c4205d71765d2b76c8305e200c17e23e59e3e5f69cc4e', 1],
-      ['4870d78bfdc31b6b6d3f046c66c0e036762d2938574ce41a135be8a2985e0629', 0],
       ['e1dcfa55c8c43859fb6c261589f93db5156778a1e1faa8d476214b3e21b3556a', 2]
     ];
 
@@ -200,8 +200,10 @@ describe('RelayIndexer', function () {
 
   it('should index requests', async () => {
     const scriptPubKey = b('76a914698fa40f815c7f8e899cf94bf85c48c1993023ce88ac');
+    const id = 1;
 
     const request = Request.fromOptions({
+      id: id,
       address: Buffer.allocUnsafe(20),
       amount: 2000,
       spends: {
@@ -211,21 +213,16 @@ describe('RelayIndexer', function () {
       pays: scriptPubKey
     });
 
-    // TODO: should start with 0 for first one indexed
-
-    assert(!await indexer.hasRequest(1));
+    assert(!await indexer.hasRequest(id));
     await indexer.putRequest(request);
 
-    assert(await indexer.hasRequest(1));
+    assert(await indexer.hasRequest(id));
 
-    // indexer manages the id
-    request.id = 1;
-
-    const r = await indexer.getRequest(1);
+    const r = await indexer.getRequest(id);
 
     assert.deepEqual(request, r);
 
-    await indexer.deleteRequest(1);
+    await indexer.deleteRequest(id);
   });
 
   it('should get/delete all requests', async () => {
@@ -238,11 +235,12 @@ describe('RelayIndexer', function () {
 
     const requests = [];
 
-    for (const scriptPubKey of hexes) {
+    for (const [i, scriptPubKey] of Object.entries(hexes)) {
       // create requests from random data and
       // hold on to them to compare against
       // data returned from the database
       const request = Request.fromOptions({
+        id: Number(i),
         address: random.randomBytes(20),
         value: random.randomRange(1e3, 1e7),
         spends: {
@@ -282,8 +280,10 @@ describe('RelayIndexer', function () {
     const value = random.randomRange(1e3, 1e7);
     const index = random.randomRange(0, 3);
     const hash = random.randomBytes(32);
+    const id = random.randomRange(0, 10);
 
     const request = Request.fromOptions({
+      id: id,
       address: address,
       value: value,
       spends: {
@@ -297,7 +297,6 @@ describe('RelayIndexer', function () {
 
     const orecord = await indexer.getOutpointRecord(hash, index);
 
-    // fix this api
     const srecord = await indexer.getScriptRecord(pays);
 
     assert.deepEqual(request, r);

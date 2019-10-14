@@ -9,8 +9,9 @@ const consensus = require('bcoin/lib/protocol/consensus');
 const RelayClient = require('../lib/client');
 const random = require('bcrypto/lib/random');
 const assert = require('bsert');
-const {NodeClient, WalletClient} = require('bclient');
+const {NodeClient, WalletClient} = require('bcoin/lib/client');
 const Logger = require('blgr');
+const {Script} = require('bcoin');
 
 const logger = new Logger();
 
@@ -104,6 +105,7 @@ describe('HTTP and Websockets', function() {
     const index = 0;
 
     const json = await rclient.putRequestRecord({
+      id: 0,
       address: address,
       value: consensus.COIN,
       spends: {
@@ -122,7 +124,7 @@ describe('HTTP and Websockets', function() {
 
     const id = json.request.id;
 
-    const request = await rclient.getRequestRecord(id);
+    const request = await rclient.getRequest(id);
     assert.deepEqual(json.request, request);
 
     const outpoint = await rclient.getOutpointRecord(hash, index);
@@ -132,14 +134,63 @@ describe('HTTP and Websockets', function() {
     assert.deepEqual(json.script, script);
   });
 
-  it('should receive a websocket event on spend to "pays"', async () => {
-    let event = false;
-
-    rclient.bind('relay output created', () => {
-      event = true;
+  it('should index Request with only spends', async () => {
+    const json = await rclient.putRequestRecord({
+      id: 5,
+      address: random.randomBytes(20).toString('hex'),
+      value: consensus.COIN,
+      spends: {
+        index: 2,
+        hash: random.randomBytes(32).toString('hex')
+      }
     });
 
-    const tx = await wallet.send({
+    assert(json.request);
+    assert(json.outpoint);
+    assert(!json.script);
+  });
+
+  it('should index Request with only Pays', async () => {
+    const json = await rclient.putRequestRecord({
+      id: 5,
+      address: random.randomBytes(20).toString('hex'),
+      value: consensus.COIN,
+      pays: pays
+    });
+
+    assert(json.request);
+    assert(json.script);
+    assert(!json.outpoint);
+  });
+
+  it('should throw error when no Pays and no Spends', async () => {
+    const fn = async () => await rclient.putRequestRecord({
+      id: 8,
+      address: random.randomBytes(20).toString('hex'),
+      value: consensus.COIN
+    });
+
+    assert.rejects(fn, 'Status code: 400');
+  });
+
+  it('should receive a websocket event on spend to "pays"', async () => {
+    let event = false;
+    let tx;
+
+    function callback(data) {
+      event = true;
+      assert.equal(tx.hash, data.hash);
+
+      const output = tx.outputs[data.index];
+      assert(output);
+
+      const script = Script.fromAddress(output.address);
+      assert.equal(pays, script.toRaw().toString('hex'));
+    }
+
+    rclient.bind('relay requests satisfied', callback);
+
+    tx = await wallet.send({
       account: 'default',
       outputs: [
         {value: 0.1 * consensus.COIN, script: pays}
@@ -152,21 +203,30 @@ describe('HTTP and Websockets', function() {
     await nclient.execute('generatetoaddress', [1, coinbase]);
 
     assert(event);
+
+    // TODO: stuck on old version of bclient
+    // without unbind method, so call it directly
+    // on the client's socket
+    rclient.socket.unbind('relay requests satisfied', callback);
   });
 
   it('should return the latest id from GET /', async () => {
-    const info = await rclient.getRelayInfo();
-    assert('latestId' in info);
-
     const n = 10;
-    // create a bunch of Requests
-    // send n and assert that info.latestId + n === new response
+
+    // create a bunch of Requests and index them
+    // increment the id each time, assert that the
+    // incremented id is returned
     for (let i = 0; i < n; i++) {
+      const info = await rclient.getRelayInfo();
+      assert('latest' in info);
+      assert(typeof info.latest.id === 'number');
+
       const address = random.randomBytes(20).toString('hex');
       const hash = random.randomBytes(32).toString('hex');
       const index = random.randomRange(0, 4);
 
       await rclient.putRequestRecord({
+        id: info.latest.id + 1,
         address: address,
         value: consensus.COIN,
         spends: {
@@ -175,10 +235,59 @@ describe('HTTP and Websockets', function() {
         },
         pays: pays
       });
+
+      const post = await rclient.getRelayInfo();
+
+      assert.deepEqual(post.latest.id, info.latest.id + 1);
+    }
+  });
+
+  it('should receive a websocket event on spend of "spends"', async () => {
+    const pays = '00144aed182abf4817c8383979b61a25e3eaea2187c0';
+    let event = false;
+    let hash, index;
+
+    function callback(data) {
+      event = true;
+      assert.equal(hash, data.hash.reverse().toString('hex'));
+      assert.equal(index, data.index);
     }
 
-    const post = await rclient.getRelayInfo();
+    // set up listener
+    rclient.bind('relay requests satisfied', callback);
 
-    assert.deepEqual(info.latestId + n, post.latestId);
+    // create transaction
+    const tx = await wallet.createTX({
+      account: 'default',
+      outputs: [
+        {value: 0.1 * consensus.COIN, script: pays}
+      ]
+    });
+
+    // create Request
+    const info = await rclient.getRelayInfo();
+    const address = random.randomBytes(20).toString('hex');
+    hash = tx.inputs[0].prevout.hash;
+    index = tx.inputs[0].prevout.index;
+
+    await rclient.putRequestRecord({
+      id: info.latest.id + 1,
+      address: address,
+      value: consensus.COIN,
+      spends: {
+        index: index,
+        hash: hash
+      }
+    });
+
+    const hex = tx.hex;
+    await nclient.execute('sendrawtransaction', [hex]);
+
+    // mine a block to get it in the chain
+    await nclient.execute('generatetoaddress', [1, coinbase]);
+
+    assert(event);
+
+    rclient.socket.unbind('relay requests satisfied', callback);
   });
 });
