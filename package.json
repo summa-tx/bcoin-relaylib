@@ -24,7 +24,6 @@
   },
   "license": "Apache-2.0",
   "dependencies": {
-    "bclient": "^0.1.7",
     "bcoin": "git+https://github.com/bcoin-org/bcoin.git",
     "bcrypto": "https://github.com/bcoin-org/bcrypto.git",
     "bdb": "^1.1.7",
