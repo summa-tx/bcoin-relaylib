@@ -58,7 +58,7 @@ const wallet = wclient.wallet('primary');
 // address used for coinbase rewards
 let coinbase;
 
-describe('HTTP and Websockets', function() {
+describe('HTTP Rescan', function() {
   before(async () => {
     consensus.COINBASE_MATURITY = 0;
 
@@ -112,26 +112,33 @@ describe('HTTP and Websockets', function() {
     coins.sort((a, b) => a.height > b.height);
     coin = Coin.fromJSON(coins[0]);
 
+    // be sure to use big endian here for hash
     await rclient.putRequestRecord({
       id: 1,
       address: address,
       value: consensus.COIN,
       spends: {
-        hash: coin.hash.toString('hex'),
-        index: coin.index
+        hash: coins[0].hash,
+        index: coins[0].index
       }
     });
   });
 
+  // keep track of data from event and the
+  // height before the event was triggered
+  let eventData, height;
   it('should get websocket events from Requests', async () => {
-    this.skip();
-
     let event = false;
 
-    // TODO: debug why this isn't firing
-    rclient.bind('relay requests satisfied', (data) => {
+    const ninfo = await nclient.getInfo();
+    height = ninfo.chain.height;
+
+    function callback(data) {
       event = true;
-    });
+      eventData = data;
+    }
+
+    rclient.bind('relay requests satisfied', callback);
 
     const info = await wallet.createAddress('default');
 
@@ -165,9 +172,24 @@ describe('HTTP and Websockets', function() {
     await nclient.execute('generatetoaddress', [1, coinbase]);
 
     assert(event);
+
+    rclient.socket.unbind('relay requests satisfied', callback);
   });
 
   it('should rescan and get the same websocket events', async () => {
-    this.skip();
+    let event = false;
+
+    function callback(data) {
+      assert.deepEqual(data, eventData);
+      event = true;
+    }
+
+    rclient.bind('relay requests satisfied', callback);
+
+    await rclient.rescan(height);
+
+    assert(event);
+
+    rclient.socket.unbind('relay requests satisfied', callback);
   });
 });
