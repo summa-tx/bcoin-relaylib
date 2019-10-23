@@ -290,4 +290,22 @@ describe('HTTP and Websockets', function() {
 
     rclient.socket.unbind('relay requests satisfied', callback);
   });
+
+  it('should wipe the db', async () => {
+    // query all of the requests in the database
+    const r1 = await rclient.getRequests();
+
+    // not good to depend on side effects from
+    // previous tests, but running with it for now
+    assert(r1.length > 0);
+
+    const response = await rclient.wipe();
+    assert.equal(response.success, true);
+
+    // query all the requests in the database again
+    const r2 = await rclient.getRequests();
+
+    // now the requests are all gone
+    assert.equal(r2.length, 0);
+  });
 });
