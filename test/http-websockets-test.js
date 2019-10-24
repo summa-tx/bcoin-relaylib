@@ -150,7 +150,7 @@ describe('HTTP and Websockets', function() {
     assert(!json.script);
   });
 
-  it('should index Request with only Pays', async () => {
+  it('should index Request with only pays', async () => {
     const json = await rclient.putRequestRecord({
       id: 5,
       address: random.randomBytes(20).toString('hex'),
@@ -179,13 +179,8 @@ describe('HTTP and Websockets', function() {
 
     function callback(data) {
       event = true;
-      assert.equal(tx.hash, data.hash);
 
-      const output = tx.outputs[data.index];
-      assert(output);
-
-      const script = Script.fromAddress(output.address);
-      assert.equal(pays, script.toRaw().toString('hex'));
+      assert.equal(tx.hash, data.txid);
     }
 
     rclient.bind('relay requests satisfied', callback);
@@ -244,20 +239,20 @@ describe('HTTP and Websockets', function() {
 
   it('should receive a websocket event on spend of "spends"', async () => {
     const pays = '00144aed182abf4817c8383979b61a25e3eaea2187c0';
+
     let event = false;
-    let hash, index;
+    let tx;
 
     function callback(data) {
       event = true;
-      assert.equal(hash, data.hash.reverse().toString('hex'));
-      assert.equal(index, data.index);
+      assert.equal(tx.hash, data.txid);
     }
 
     // set up listener
     rclient.bind('relay requests satisfied', callback);
 
     // create transaction
-    const tx = await wallet.createTX({
+    tx = await wallet.createTX({
       account: 'default',
       outputs: [
         {value: 0.1 * consensus.COIN, script: pays}
@@ -267,8 +262,8 @@ describe('HTTP and Websockets', function() {
     // create Request
     const info = await rclient.getRelayInfo();
     const address = random.randomBytes(20).toString('hex');
-    hash = tx.inputs[0].prevout.hash;
-    index = tx.inputs[0].prevout.index;
+    const hash = tx.inputs[0].prevout.hash;
+    const index = tx.inputs[0].prevout.index;
 
     await rclient.putRequestRecord({
       id: info.latest.id + 1,
