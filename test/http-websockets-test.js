@@ -11,7 +11,6 @@ const random = require('bcrypto/lib/random');
 const assert = require('bsert');
 const {NodeClient, WalletClient} = require('bcoin/lib/client');
 const Logger = require('blgr');
-const {Script} = require('bcoin');
 
 const logger = new Logger();
 
