@@ -14,6 +14,7 @@ const Request = require('../lib/request');
 const Logger = require('blgr');
 const assert = require('bsert');
 const random = require('bcrypto/lib/random');
+const layout = require('../lib/layout');
 
 // TODO: afterEach step for clearing db
 describe('RelayIndexer', function () {
@@ -303,6 +304,21 @@ describe('RelayIndexer', function () {
 
     assert.deepEqual(o, orecord);
     assert.deepEqual(s, srecord);
+  });
+
+  it('should iterate over all the script records', async () => {
+    const requests = await indexer.getScriptRecords();
+
+    const siter = indexer.scriptRecordIterator();
+
+    const iterated = [];
+    await siter.each((key, value) => {
+      const [hash] = layout.s.decode(key);
+      const record = ScriptRecord.decode(value, hash);
+      iterated.push(record);
+    });
+
+    assert.deepEqual(requests, iterated);
   });
 });
 
