@@ -179,7 +179,7 @@ describe('HTTP and Websockets', function() {
     function callback(data) {
       event = true;
 
-      assert.equal(tx.hash, data.txid);
+      assert.deepEqual(tx.hash, data.txid);
     }
 
     rclient.bind('relay requests satisfied', callback);
@@ -244,7 +244,7 @@ describe('HTTP and Websockets', function() {
 
     function callback(data) {
       event = true;
-      assert.equal(tx.hash, data.txid);
+      assert.deepEqual(tx.hash, data.txid);
     }
 
     // set up listener
