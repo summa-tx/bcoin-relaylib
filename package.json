@@ -34,6 +34,8 @@
     "bweb": "^0.1.9"
   },
   "devDependencies": {
-    "bmocha": "^2.1.2"
+    "babel-eslint": "^10.0.3",
+    "bmocha": "^2.1.2",
+    "eslint": "^6.5.1"
   }
 }
