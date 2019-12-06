@@ -25,7 +25,7 @@ const random = require('bcrypto/lib/random');
 const layout = require('../lib/layout');
 
 // TODO: afterEach step for clearing db
-describe.only('RelayIndexer', function () {
+describe('RelayIndexer', function () {
   let indexer, workers, chain, blocks;
 
   const logger = new Logger();
@@ -256,7 +256,7 @@ describe.only('RelayIndexer', function () {
       // hold on to them to compare against
       // data returned from the database
       const id = Buffer.alloc(32);
-      id[32] = i;
+      id[31] = i;
 
       const request = Request.fromOptions({
         id: id,
@@ -285,7 +285,7 @@ describe.only('RelayIndexer', function () {
     assert.equal(requests.length, rs.length);
 
     for (const request of requests) {
-      const r1 = rs.find(r => r.id === request.id);
+      const r1 = rs.find(r => r.id.equals(request.id));
       assert.deepEqual(request, r1);
 
       await indexer.deleteRequest(r1.id);
@@ -301,7 +301,7 @@ describe.only('RelayIndexer', function () {
     const hash = random.randomBytes(32);
 
     const id = Buffer.alloc(32);
-    id[32] = random.randomRange(0, 10);
+    id[31] = random.randomRange(0, 10);
 
     const request = Request.fromOptions({
       id: id,
