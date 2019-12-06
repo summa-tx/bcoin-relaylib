@@ -106,7 +106,7 @@ describe('HTTP Rescan', function() {
 
     // create a Request for pays
     await rclient.putRequestRecord({
-      id: 0,
+      id: '00'.repeat(32),
       address: address,
       value: consensus.COIN,
       pays: pays
@@ -122,7 +122,7 @@ describe('HTTP Rescan', function() {
 
     // be sure to use big endian here for hash
     await rclient.putRequestRecord({
-      id: 1,
+      id: '00'.repeat(31) + '01',
       address: address,
       value: consensus.COIN,
       spends: {
