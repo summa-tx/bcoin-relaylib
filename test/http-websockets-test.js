@@ -72,6 +72,8 @@ const wallet = wclient.wallet('primary');
 let coinbase;
 
 describe('HTTP and Websockets', function() {
+  const HEX_NULL_248 = '00'.repeat(31);
+
   before(async () => {
     // so we don't have to wait too long for
     // coinbase maturity
@@ -142,7 +144,7 @@ describe('HTTP and Websockets', function() {
 
   it('should index Request with only spends', async () => {
     const json = await rclient.putRequestRecord({
-      id: `${'00'.repeat(31) + '05'}`,
+      id: HEX_NULL_248 + '05',
       address: random.randomBytes(20).toString('hex'),
       value: consensus.COIN,
       spends: {
@@ -158,7 +160,7 @@ describe('HTTP and Websockets', function() {
 
   it('should index Request with only pays', async () => {
     const json = await rclient.putRequestRecord({
-      id: `${'00'.repeat(31) + '05'}`,
+      id: HEX_NULL_248 + '05',
       address: random.randomBytes(20).toString('hex'),
       value: consensus.COIN,
       pays: pays
@@ -171,7 +173,7 @@ describe('HTTP and Websockets', function() {
 
   it('should throw error when no Pays and no Spends', async () => {
     const fn = async () => await rclient.putRequestRecord({
-      id: `${'00'.repeat(31) + '08'}`,
+      id: HEX_NULL_248 + '08',
       address: random.randomBytes(20).toString('hex'),
       value: consensus.COIN
     });
@@ -223,6 +225,7 @@ describe('HTTP and Websockets', function() {
 
       assert('latest' in info);
       assert(typeof info.latest.id === 'string');
+      assert(info.latest.id.length === 64);
 
       const address = random.randomBytes(20).toString('hex');
       const hash = random.randomBytes(32).toString('hex');

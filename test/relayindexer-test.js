@@ -29,6 +29,7 @@ describe('RelayIndexer', function () {
   let indexer, workers, chain, blocks;
 
   const logger = new Logger();
+  const HEX_NULL_248 = '00'.repeat(31);
 
   before(async () => {
     const network = Network.get('regtest');
@@ -79,11 +80,9 @@ describe('RelayIndexer', function () {
   it('should insert/delete/has a script record', async () => {
     const hex = '0xa914009dce84f5581f41bb3f5ee23909d87fa7924d4687';
 
-    const NULL_248 = '00'.repeat(31);
-
     const record = ScriptRecord.fromJSON({
       script: hex,
-      requests: [NULL_248 + '01', NULL_248 + '02', NULL_248 + '03']
+      requests: [HEX_NULL_248 + '01', HEX_NULL_248 + '02', HEX_NULL_248 + '03']
     });
 
     assert(!await indexer.hasScriptRecord(record));
@@ -100,11 +99,10 @@ describe('RelayIndexer', function () {
 
   it('should reserialize a script record after db read/write', async () => {
     const hex = '0x76a91444dd2332e6ecfb4a1e77f49ef130d41fe820867188ac';
-    const NULL_248 = '00'.repeat(31);
 
     const record = ScriptRecord.fromJSON({
       script: hex,
-      requests: [NULL_248 + '01', NULL_248 + '02', NULL_248 + '03']
+      requests: [HEX_NULL_248 + '01', HEX_NULL_248 + '02', HEX_NULL_248 + '03']
     });
 
     await indexer.putScriptRecord(record);
@@ -128,7 +126,7 @@ describe('RelayIndexer', function () {
     ];
 
     const randBuf = Buffer.alloc(32);
-    randBuf[30] = random.randomRange(0, 2e8);
+    randBuf[30] = random.randomRange(0, 255);
     const randHex = randBuf.toString('hex');
 
     for (const hex of hexes) {
@@ -284,6 +282,8 @@ describe('RelayIndexer', function () {
 
     assert.equal(requests.length, rs.length);
 
+    /* eslint-disable require-atomic-updates */
+    // linter error is a false-positive due to arrow function
     for (const request of requests) {
       const r1 = rs.find(r => r.id.equals(request.id));
       assert.deepEqual(request, r1);
@@ -291,6 +291,7 @@ describe('RelayIndexer', function () {
       await indexer.deleteRequest(r1.id);
       assert(!await indexer.hasRequest(r1.id));
     }
+    /* eslint-enable require-atomic-updates */
   });
 
   it('should add Request', async () => {
