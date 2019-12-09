@@ -29,6 +29,7 @@ describe('RelayIndexer', function () {
   let indexer, workers, chain, blocks;
 
   const logger = new Logger();
+  const HEX_NULL_248 = '00'.repeat(31);
 
   before(async () => {
     const network = Network.get('regtest');
@@ -81,7 +82,7 @@ describe('RelayIndexer', function () {
 
     const record = ScriptRecord.fromJSON({
       script: hex,
-      requests: [1, 2, 3]
+      requests: [HEX_NULL_248 + '01', HEX_NULL_248 + '02', HEX_NULL_248 + '03']
     });
 
     assert(!await indexer.hasScriptRecord(record));
@@ -101,7 +102,7 @@ describe('RelayIndexer', function () {
 
     const record = ScriptRecord.fromJSON({
       script: hex,
-      requests: [7, 11, 666]
+      requests: [HEX_NULL_248 + '01', HEX_NULL_248 + '02', HEX_NULL_248 + '03']
     });
 
     await indexer.putScriptRecord(record);
@@ -124,10 +125,14 @@ describe('RelayIndexer', function () {
       '0x76a914698fa40f815c7f8e899cf94bf85c48c1993023ce88ac'
     ];
 
+    const randBuf = Buffer.alloc(32);
+    randBuf[30] = random.randomRange(0, 255);
+    const randHex = randBuf.toString('hex');
+
     for (const hex of hexes) {
       const record = ScriptRecord.fromJSON({
         script: hex,
-        requests: [random.randomRange(0, 2e8)]
+        requests: [randHex]
       });
 
       await indexer.putScriptRecord(record);
@@ -159,7 +164,7 @@ describe('RelayIndexer', function () {
         hash: txid,
         index: 0
       },
-      requests: [10]
+      requests: ['00'.repeat(31) + '10']
     });
 
     assert(!await indexer.hasOutpointRecord(record));
@@ -186,7 +191,7 @@ describe('RelayIndexer', function () {
           hash: txid,
           index: index
         },
-        requests: [10]
+        requests: ['00'.repeat(31) + '10']
       });
 
       await indexer.putOutpointRecord(record);
@@ -209,7 +214,7 @@ describe('RelayIndexer', function () {
 
   it('should index requests', async () => {
     const scriptPubKey = b('76a914698fa40f815c7f8e899cf94bf85c48c1993023ce88ac');
-    const id = 1;
+    const id = Buffer.from('00'.repeat(31) + '01', 'hex');
 
     const request = Request.fromOptions({
       id: id,
@@ -248,8 +253,11 @@ describe('RelayIndexer', function () {
       // create requests from random data and
       // hold on to them to compare against
       // data returned from the database
+      const id = Buffer.alloc(32);
+      id[31] = i;
+
       const request = Request.fromOptions({
-        id: Number(i),
+        id: id,
         address: random.randomBytes(20),
         value: random.randomRange(1e3, 1e7),
         spends: {
@@ -274,13 +282,16 @@ describe('RelayIndexer', function () {
 
     assert.equal(requests.length, rs.length);
 
+    /* eslint-disable require-atomic-updates */
+    // linter error is a false-positive due to arrow function
     for (const request of requests) {
-      const r1 = rs.find(r => r.id === request.id);
+      const r1 = rs.find(r => r.id.equals(request.id));
       assert.deepEqual(request, r1);
 
       await indexer.deleteRequest(r1.id);
       assert(!await indexer.hasRequest(r1.id));
     }
+    /* eslint-enable require-atomic-updates */
   });
 
   it('should add Request', async () => {
@@ -289,7 +300,9 @@ describe('RelayIndexer', function () {
     const value = random.randomRange(1e3, 1e7);
     const index = random.randomRange(0, 3);
     const hash = random.randomBytes(32);
-    const id = random.randomRange(0, 10);
+
+    const id = Buffer.alloc(32);
+    id[31] = random.randomRange(0, 10);
 
     const request = Request.fromOptions({
       id: id,

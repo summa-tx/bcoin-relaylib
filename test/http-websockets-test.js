@@ -72,6 +72,8 @@ const wallet = wclient.wallet('primary');
 let coinbase;
 
 describe('HTTP and Websockets', function() {
+  const HEX_NULL_248 = '00'.repeat(31);
+
   before(async () => {
     // so we don't have to wait too long for
     // coinbase maturity
@@ -112,7 +114,7 @@ describe('HTTP and Websockets', function() {
     const index = 0;
 
     const json = await rclient.putRequestRecord({
-      id: 0,
+      id: '00'.repeat(32),
       address: address,
       value: consensus.COIN,
       spends: {
@@ -128,7 +130,6 @@ describe('HTTP and Websockets', function() {
     assert(json.request);
     assert(json.outpoint);
     assert(json.script);
-
     const id = json.request.id;
 
     const request = await rclient.getRequest(id);
@@ -143,7 +144,7 @@ describe('HTTP and Websockets', function() {
 
   it('should index Request with only spends', async () => {
     const json = await rclient.putRequestRecord({
-      id: 5,
+      id: HEX_NULL_248 + '05',
       address: random.randomBytes(20).toString('hex'),
       value: consensus.COIN,
       spends: {
@@ -159,20 +160,20 @@ describe('HTTP and Websockets', function() {
 
   it('should index Request with only pays', async () => {
     const json = await rclient.putRequestRecord({
-      id: 5,
+      id: HEX_NULL_248 + '05',
       address: random.randomBytes(20).toString('hex'),
       value: consensus.COIN,
       pays: pays
     });
 
     assert(json.request);
-    assert(json.script);
     assert(!json.outpoint);
+    assert(json.script);
   });
 
   it('should throw error when no Pays and no Spends', async () => {
     const fn = async () => await rclient.putRequestRecord({
-      id: 8,
+      id: HEX_NULL_248 + '08',
       address: random.randomBytes(20).toString('hex'),
       value: consensus.COIN
     });
@@ -218,17 +219,24 @@ describe('HTTP and Websockets', function() {
     // create a bunch of Requests and index them
     // increment the id each time, assert that the
     // incremented id is returned
-    for (let i = 0; i < n; i++) {
+    // fragile: relies on previous tests not making IDs higher than 0x0100
+    for (let i = 1; i <= n; i++) {
       const info = await rclient.getRelayInfo();
+
       assert('latest' in info);
-      assert(typeof info.latest.id === 'number');
+      assert(typeof info.latest.id === 'string');
+      assert(info.latest.id.length === 64);
 
       const address = random.randomBytes(20).toString('hex');
       const hash = random.randomBytes(32).toString('hex');
       const index = random.randomRange(0, 4);
 
+      const idBuf = Buffer.alloc(32);
+      idBuf[30] = i;
+      const id = idBuf.toString('hex');
+
       await rclient.putRequestRecord({
-        id: info.latest.id + 1,
+        id: id,
         address: address,
         value: consensus.COIN,
         spends: {
@@ -239,8 +247,7 @@ describe('HTTP and Websockets', function() {
       });
 
       const post = await rclient.getRelayInfo();
-
-      assert.deepEqual(post.latest.id, info.latest.id + 1);
+      assert.deepEqual(post.latest.id, id);
     }
   });
 
