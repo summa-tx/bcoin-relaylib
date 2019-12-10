@@ -215,6 +215,7 @@ describe('HTTP and Websockets', function() {
 
   it('should return the latest id from GET /', async () => {
     const n = 10;
+    let prevID, id;
 
     // create a bunch of Requests and index them
     // increment the id each time, assert that the
@@ -233,7 +234,8 @@ describe('HTTP and Websockets', function() {
 
       const idBuf = Buffer.alloc(32);
       idBuf[30] = i;
-      const id = idBuf.toString('hex');
+      prevID = id;
+      id = idBuf.toString('hex');
 
       await rclient.putRequestRecord({
         id: id,
@@ -245,6 +247,14 @@ describe('HTTP and Websockets', function() {
         },
         pays: pays
       });
+
+      const latestUnder = await rclient.getLatestRequestUnderID(id.toString('hex'));
+      assert.deepEqual(latestUnder.id, id);
+
+      if (prevID) {
+        const prevUnder = await rclient.getLatestRequestUnderID(prevID.toString('hex'));
+        assert.deepEqual(prevUnder.id, prevID);
+      }
 
       const post = await rclient.getRelayInfo();
       assert.deepEqual(post.latest.id, id);
