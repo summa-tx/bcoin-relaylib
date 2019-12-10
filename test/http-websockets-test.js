@@ -248,10 +248,12 @@ describe('HTTP and Websockets', function() {
         pays: pays
       });
 
+      // Test that response includes the max range
       const latestUnder = await rclient.getLatestRequestUnderID(id.toString('hex'));
       assert.deepEqual(latestUnder.id, id);
 
       if (prevID) {
+        // Test that response excludes the newer request because its ID is above max
         const prevUnder = await rclient.getLatestRequestUnderID(prevID.toString('hex'));
         assert.deepEqual(prevUnder.id, prevID);
       }
