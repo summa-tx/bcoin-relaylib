@@ -54,8 +54,8 @@ await client.putRequestRecord({
   id: '0000000000000000000000000000000000000000000000000000000000000001',
   // ethereum address
   address: '0x5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c',
-  // in gwei
-  value: 1,
+  // threshold value in sats
+  value: 100,
   // a scriptPubKey
   pays: '76a914ba507bae8f1643d2556000ca26b9301b9069dc6b88ac',
   // an outpoint
