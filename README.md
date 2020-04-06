@@ -3,9 +3,9 @@
 [bcoin](https://github.com/bcoin-org/bcoin) is an alternative implementation
 of the Bitcoin Protocol used in production by [Purse.io](https://purse.io).
 
-Indexes data that is useful for relays and emits events over websockets. Users
-subscribe to transactions with certain characteristics, and receive
-notifications when they occur.
+This bcoin plugin indexes data that is useful for relays and emits events
+over websockets. Users subscribe to transactions with certain characteristics,
+and receive notifications when they occur.
 
 This project is intended to serve the [OnDemandSPV](
 https://github.com/summa-tx/relays/blob/master/solidity/contracts/OnDemandSPV.sol)
