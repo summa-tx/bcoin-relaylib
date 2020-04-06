@@ -1,6 +1,12 @@
 # bcoin-relaylib
 
-Indexes data that is useful for relays and emits events over websockets.
+Indexes data that is useful for relays and emits events over websockets. Users
+subscribe to transactions with certain characteristics, and receive
+notifications when they occur.
+
+This project is intended to serve the [OnDemandSPV](
+https://github.com/summa-tx/relays/blob/master/solidity/contracts/OnDemandSPV.sol)
+component of the Summa [relay project](https://github.com/summa-tx/relays).
 
 # Overview
 
@@ -39,9 +45,9 @@ $ bcoin --plugins /path/to/bcoin-relaylib/lib/plugin
 - DEL /relay/request
 - DEL /relay
 
-By adding a `Request`, it will emit events via websocket
-when the `Request` is fulfilled. Must include either the
-`pays` or `spends` keys or both.
+After adding a `Request`, the relay plugin will emit events via websocket when
+the `Request` is fulfilled. Must include either the `pays` or `spends` keys or
+both.
 
 ```js
 const client = new RelayClient({
@@ -56,7 +62,7 @@ await client.putRequestRecord({
   address: '0x5a0b54d5dc17e0aadc383d2db43b0a0d3e029c4c',
   // threshold value in sats
   value: 100,
-  // a scriptPubKey
+  // a scriptPubKey, without its length-prefix
   pays: '76a914ba507bae8f1643d2556000ca26b9301b9069dc6b88ac',
   // an outpoint
   spends: {
