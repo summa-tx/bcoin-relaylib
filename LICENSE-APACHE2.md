@@ -1,4 +1,9 @@
-Copyright 2020 Indefinite Integral Incorporated
+Copyright (c) 2014-2015, Fedor Indutny (https://github.com/indutny)
+Copyright (c) 2014-2019, Christopher Jeffrey (https://github.com/chjj)
+Copyright (c) 2017-2020, bcoin Contributors
+Copyright (c) 2019-2020, Mark Tyneway
+Copyright (c) 2019-2020, James Prestwich
+Copyright (c) 2020, Indefinite Integral Incorporated
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
