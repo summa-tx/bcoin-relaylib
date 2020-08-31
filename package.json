@@ -22,7 +22,7 @@
   "bin": {
     "node": "./bin/node"
   },
-  "license": "Apache-2.0",
+  "license": "(MIT OR Apache-2.0)",
   "dependencies": {
     "bcoin": "git+https://github.com/bcoin-org/bcoin.git",
     "bcrypto": "git+https://github.com/bcoin-org/bcrypto.git",

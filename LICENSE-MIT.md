@@ -5,6 +5,7 @@ Copyright (c) 2014-2019, Christopher Jeffrey (https://github.com/chjj)
 Copyright (c) 2017-2020, bcoin Contributors
 Copyright (c) 2019-2020, Mark Tyneway
 Copyright (c) 2019-2020, James Prestwich
+Copyright (c) 2020, Indefinite Integral Incorporated
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
